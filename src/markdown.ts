@@ -13,6 +13,13 @@ function escapeHtml(text: string): string {
 
 // Convert markdown to Telegram HTML
 export function markdownToHtml(text: string): string {
+	// Use null character as delimiter to avoid matching bold/italic patterns
+	// The previous __CODE_BLOCK_0__ format was incorrectly matched by the
+	// bold pattern /__([^_]+)__/g, causing placeholders to be converted to
+	// <b>CODE_BLOCK_0</b> instead of being preserved for later restoration.
+	const PLACEHOLDER_START = "\x00";
+	const PLACEHOLDER_END = "\x00";
+
 	// First, extract and preserve code blocks to prevent processing inside them
 	const codeBlocks: string[] = [];
 	let processed = text.replace(
@@ -21,7 +28,7 @@ export function markdownToHtml(text: string): string {
 			const index = codeBlocks.length;
 			// Escape HTML inside code blocks
 			codeBlocks.push(`<pre>${escapeHtml(code.trim())}</pre>`);
-			return `__CODE_BLOCK_${index}__`;
+			return `${PLACEHOLDER_START}CODE_BLOCK_${index}${PLACEHOLDER_END}`;
 		},
 	);
 
@@ -30,7 +37,7 @@ export function markdownToHtml(text: string): string {
 	processed = processed.replace(/`([^`]+)`/g, (_, code) => {
 		const index = inlineCodes.length;
 		inlineCodes.push(`<code>${escapeHtml(code)}</code>`);
-		return `__INLINE_CODE_${index}__`;
+		return `${PLACEHOLDER_START}INLINE_CODE_${index}${PLACEHOLDER_END}`;
 	});
 
 	// Escape HTML in remaining text
@@ -62,12 +69,18 @@ export function markdownToHtml(text: string): string {
 
 	// Restore code blocks
 	for (let i = 0; i < codeBlocks.length; i++) {
-		processed = processed.replace(`__CODE_BLOCK_${i}__`, codeBlocks[i]);
+		processed = processed.replace(
+			`${PLACEHOLDER_START}CODE_BLOCK_${i}${PLACEHOLDER_END}`,
+			codeBlocks[i],
+		);
 	}
 
 	// Restore inline code
 	for (let i = 0; i < inlineCodes.length; i++) {
-		processed = processed.replace(`__INLINE_CODE_${i}__`, inlineCodes[i]);
+		processed = processed.replace(
+			`${PLACEHOLDER_START}INLINE_CODE_${i}${PLACEHOLDER_END}`,
+			inlineCodes[i],
+		);
 	}
 
 	return processed;
