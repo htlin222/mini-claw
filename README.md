@@ -10,9 +10,11 @@ A minimalist alternative to OpenClaw - use your Claude Pro/Max or ChatGPT Plus s
 - **Workspace Navigation** - Change directories with `/cd`, run shell commands with `/shell`
 - **Session Management** - Archive, switch, and clean up old sessions
 - **File Attachments** - Automatically sends files created by Pi (PDF, images, documents)
+- **Image Support** - Send photos to Pi for vision analysis
+- **Live Mode** - Interactive `/live` sessions with real-time Pi RPC
 - **Rate Limiting** - Prevents message spam (configurable cooldown)
 - **Access Control** - Optional allowlist for authorized users
-- **Typing Indicators** - Shows activity while AI is processing
+- **Playwright Skill** - Built-in `pw` CLI for browser automation via Pi
 
 ## Architecture
 
@@ -30,40 +32,36 @@ A minimalist alternative to OpenClaw - use your Claude Pro/Max or ChatGPT Plus s
 
 ## Quick Start
 
+### One-line Install (pre-built binary)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/siygle/mini-claw/main/install.sh | bash
+```
+
+This downloads the correct binary for your platform, walks you through configuration, and installs a system service.
+
+### Build from Source
+
+Requires [Rust toolchain](https://rustup.rs/).
+
+```bash
+git clone https://github.com/siygle/mini-claw
+cd mini-claw
+
+# Build and install as service
+make deploy
+
+# Or step by step:
+make install        # Build + check pi-coding-agent
+make login          # Authenticate with AI provider
+cp .env.example .env  # Configure
+make dev            # Run in debug mode
+```
+
 ### Prerequisites
 
-- Node.js 22+
-- pnpm
-- [Pi coding agent](https://github.com/badlogic/pi-mono) installed globally
-
-### Installation
-
-```bash
-# Clone and install
-git clone https://github.com/yourusername/mini-claw
-cd mini-claw
-pnpm install
-
-# Login to AI provider (Claude or ChatGPT)
-pi /login
-
-# Configure bot token
-cp .env.example .env
-# Edit .env with your TELEGRAM_BOT_TOKEN
-
-# Start the bot
-pnpm start
-```
-
-### Using Make
-
-```bash
-make install    # Install dependencies
-make login      # Authenticate with AI provider
-make dev        # Development mode (watch)
-make start      # Production mode
-make test       # Run tests
-```
+- [Pi coding agent](https://github.com/badlogic/pi-mono) (`npm install -g @mariozechner/pi-coding-agent`)
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
 
 ## Bot Commands
 
@@ -78,85 +76,158 @@ make test       # Run tests
 | `/session`     | List and manage sessions           |
 | `/new`         | Start fresh session (archives old) |
 | `/status`      | Show bot status                    |
+| `/live`        | Start interactive RPC session      |
 
 ## Configuration
+
+All settings go in `.env` (or `~/.mini-claw/.env` when deployed via install script):
 
 ```bash
 # Required
 TELEGRAM_BOT_TOKEN=your_bot_token
 
 # Optional
-MINI_CLAW_WORKSPACE=/path/to/workspace    # Default: ~/mini-claw-workspace
+MINI_CLAW_WORKSPACE=~/mini-claw-workspace    # Default: ~/mini-claw-workspace
 MINI_CLAW_SESSION_DIR=~/.mini-claw/sessions
-PI_THINKING_LEVEL=low                      # low | medium | high
-ALLOWED_USERS=123456,789012                # Comma-separated user IDs
+PI_THINKING_LEVEL=low                         # low | medium | high
+ALLOWED_USERS=123456,789012                   # Comma-separated user IDs
 
 # Rate limiting & timeouts (milliseconds)
-RATE_LIMIT_COOLDOWN_MS=5000                # Default: 5 seconds
-PI_TIMEOUT_MS=300000                       # Default: 5 minutes
-SHELL_TIMEOUT_MS=60000                     # Default: 60 seconds
+RATE_LIMIT_COOLDOWN_MS=5000                   # Default: 5 seconds
+PI_TIMEOUT_MS=300000                          # Default: 5 minutes
+SHELL_TIMEOUT_MS=60000                        # Default: 60 seconds
+SESSION_TITLE_TIMEOUT_MS=10000                # Default: 10 seconds
 
 # Web search (optional)
-BRAVE_API_KEY=your_brave_api_key           # For Pi web search skill
+BRAVE_API_KEY=your_brave_api_key              # For Pi web search skill
 ```
 
 ## Deployment
 
-### systemd (Linux)
+### Install Script (recommended)
+
+The install script handles binary download, configuration, and service setup for both macOS and Linux.
 
 ```bash
-make install-service
-systemctl --user start mini-claw
-systemctl --user enable mini-claw
+# Download binary + configure + install service
+./install.sh
+
+# Build from source instead of downloading
+./install.sh --from-source
+
+# Just download/build, skip service
+./install.sh --build-only
+
+# Install/restart service only (after manual config)
+./install.sh --service-only
+
+# Check service status
+./install.sh --status
+
+# Remove service
+./install.sh --uninstall
 ```
 
-### pm2
+Files are installed to `~/.mini-claw/`:
 
-```bash
-pnpm build
-pm2 start dist/index.js --name mini-claw
-pm2 save
+```
+~/.mini-claw/
+├── bin/
+│   ├── mini-claw       # Bot binary
+│   └── pw              # Playwright CLI
+├── .env                # Configuration
+├── sessions/           # Session storage
+├── mini-claw.log       # Stdout log (macOS)
+└── mini-claw.err.log   # Stderr log (macOS)
 ```
 
-### tmux
+### macOS (launchd)
+
+The install script creates a launchd user agent that starts on login.
 
 ```bash
-tmux new -s mini-claw
-pnpm start
-# Ctrl+B, D to detach
+# Manage service
+launchctl print gui/$(id -u)/com.mini-claw.bot           # Status
+launchctl kickstart -k gui/$(id -u)/com.mini-claw.bot    # Restart
+launchctl bootout gui/$(id -u)/com.mini-claw.bot         # Stop
+tail -f ~/.mini-claw/mini-claw.log                       # Logs
+```
+
+### Linux (systemd)
+
+The install script creates a systemd user service.
+
+```bash
+# Manage service
+systemctl --user status mini-claw      # Status
+systemctl --user restart mini-claw     # Restart
+systemctl --user stop mini-claw        # Stop
+journalctl --user -u mini-claw -f      # Logs
 ```
 
 ## Development
 
 ```bash
-# Run in watch mode
-pnpm dev
-
-# Type checking
-pnpm typecheck
-
-# Run tests
-pnpm test
-
-# Run tests with coverage
-pnpm test:coverage
+make dev        # Build & run (debug mode)
+make start      # Build & run (release mode)
+make test       # Run tests
+make clippy     # Run clippy lints
+make check      # Run clippy + tests
+make clean      # Remove build artifacts
 ```
 
-### Test Coverage
+### Playwright CLI
 
-| Module       | Coverage |
-| ------------ | -------- |
-| config.ts    | 100%     |
-| sessions.ts  | 100%     |
-| workspace.ts | 100%     |
-| pi-runner.ts | 100%     |
+The `pw` binary is a standalone CLI for browser automation, used by Pi as a skill.
+
+```bash
+make pw-build     # Build pw binary
+make pw-install   # Install pw to ~/.cargo/bin
+```
+
+### Project Structure
+
+```
+mini-claw/
+├── Cargo.toml              # Workspace root
+├── src/
+│   ├── main.rs             # Entry point
+│   ├── config.rs           # Configuration
+│   ├── error.rs            # Error types
+│   ├── markdown.rs         # Telegram markdown formatting
+│   ├── file_detector.rs    # File detection in Pi output
+│   ├── workspace.rs        # Workspace snapshots
+│   ├── sessions.rs         # Session management
+│   ├── pi_runner.rs        # Pi one-shot execution
+│   ├── pi_rpc.rs           # Pi RPC protocol (live mode)
+│   ├── rate_limiter.rs     # Per-chat rate limiting
+│   └── bot/
+│       ├── mod.rs          # Bot setup & dispatcher
+│       ├── commands.rs     # Telegram command handlers
+│       ├── callbacks.rs    # Inline keyboard callbacks
+│       ├── handlers.rs     # Message handlers
+│       └── util.rs         # Message splitting & helpers
+├── skills/playwright/      # pw CLI crate
+│   ├── Cargo.toml
+│   └── src/
+│       ├── main.rs
+│       ├── browser.rs
+│       └── commands/
+├── install.sh              # Cross-platform installer
+├── Makefile
+├── .env.example
+└── .github/workflows/
+    ├── ci.yml              # Build + test + clippy on PRs
+    └── release.yml         # Cross-compile on tag push
+```
 
 ## Tech Stack
 
-- **Runtime**: Node.js 22+, TypeScript
-- **Telegram**: [grammY](https://grammy.dev/)
-- **AI**: [Pi coding agent](https://github.com/badlogic/pi-mono)
-- **Testing**: Vitest
+- **Language**: Rust
+- **Telegram**: [teloxide](https://github.com/teloxide/teloxide)
+- **Browser Automation**: [chromiumoxide](https://github.com/mattsse/chromiumoxide)
+- **AI Backend**: [Pi coding agent](https://github.com/badlogic/pi-mono)
+- **CI/CD**: GitHub Actions (cross-compile for Linux & macOS, x86_64 & aarch64)
 
 ## Troubleshooting
 
@@ -172,6 +243,24 @@ Check for running Pi processes:
 
 ```bash
 ps aux | grep pi
+```
+
+### Service not starting
+
+Check logs:
+
+```bash
+# macOS
+tail -f ~/.mini-claw/mini-claw.err.log
+
+# Linux
+journalctl --user -u mini-claw -f
+```
+
+Verify your token is set:
+
+```bash
+grep TELEGRAM_BOT_TOKEN ~/.mini-claw/.env
 ```
 
 ## License
