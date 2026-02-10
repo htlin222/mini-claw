@@ -1,0 +1,31 @@
+[workspace]
+members = [".", "skills/playwright"]
+
+[package]
+name = "mini-claw"
+version = "0.1.0"
+edition = "2021"
+description = "Lightweight Telegram bot for persistent AI conversations using Pi"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+teloxide = { version = "0.17", features = ["macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dotenvy = "0.15"
+regex = "1"
+reqwest = { version = "0.12", features = ["stream"] }
+tempfile = "3"
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dirs = "6"
+base64 = "0.22"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
+
+[profile.release]
+strip = true
+lto = true

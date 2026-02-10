@@ -1,8 +1,8 @@
-.PHONY: install login dev start build status clean help test test-watch test-coverage lint typecheck check pw-install pw-dev pw-build
+.PHONY: install login dev start build status clean help test clippy check pw-build pw-install install-service deploy uninstall
 
 # Default target
 help:
-	@echo "Mini-Claw - Lightweight Telegram AI Bot"
+	@echo "Mini-Claw - Lightweight Telegram AI Bot (Rust)"
 	@echo ""
 	@echo "Quick Start:"
 	@echo "  make install    Install dependencies"
@@ -10,24 +10,26 @@ help:
 	@echo "  make dev        Start in development mode"
 	@echo ""
 	@echo "Commands:"
-	@echo "  make install    Install pnpm dependencies + pi-coding-agent"
+	@echo "  make install    Install pi-coding-agent"
 	@echo "  make login      Run 'pi /login' to authenticate"
-	@echo "  make dev        Start bot with hot reload"
-	@echo "  make start      Start bot in production mode"
-	@echo "  make build      Compile TypeScript"
+	@echo "  make dev        Build & run bot (debug mode)"
+	@echo "  make start      Build & run bot (release mode)"
+	@echo "  make build      Compile all workspace crates"
 	@echo "  make status     Check Pi auth status"
 	@echo "  make clean      Remove build artifacts"
 	@echo ""
 	@echo "Quality:"
 	@echo "  make test       Run tests"
-	@echo "  make lint       Run ESLint"
-	@echo "  make typecheck  Run TypeScript type checking"
-	@echo "  make check      Run all checks (lint + typecheck + test)"
+	@echo "  make clippy     Run clippy lints"
+	@echo "  make check      Run all checks (clippy + test)"
+	@echo ""
+	@echo "Deploy:"
+	@echo "  make deploy     Build from source & install as service"
+	@echo "  make uninstall  Stop service & remove service files"
 	@echo ""
 	@echo "Playwright Skill:"
-	@echo "  make pw-install Install and link pw CLI globally"
-	@echo "  make pw-build   Build Playwright skill"
-	@echo "  make pw-dev     Start Playwright skill in dev mode"
+	@echo "  make pw-build   Build pw CLI binary"
+	@echo "  make pw-install Build and install pw CLI to ~/.cargo/bin"
 	@echo ""
 	@echo "Setup:"
 	@echo "  1. make install"
@@ -37,11 +39,11 @@ help:
 
 # Install dependencies
 install:
-	@echo "Installing pnpm dependencies..."
-	pnpm install
-	@echo ""
 	@echo "Checking pi-coding-agent..."
 	@which pi > /dev/null 2>&1 || (echo "Installing pi-coding-agent globally..." && npm install -g @mariozechner/pi-coding-agent)
+	@echo ""
+	@echo "Building project..."
+	cargo build --workspace
 	@echo ""
 	@echo "Done! Next steps:"
 	@echo "  1. Run 'make login' to authenticate with Claude/ChatGPT"
@@ -55,20 +57,19 @@ login:
 	@echo ""
 	pi /login
 
-# Development mode with hot reload
+# Development mode (debug build + run)
 dev:
 	@test -f .env || (echo "Error: .env file not found. Copy .env.example to .env first." && exit 1)
-	pnpm dev
+	cargo run
 
-# Production start
+# Production start (release build + run)
 start:
 	@test -f .env || (echo "Error: .env file not found." && exit 1)
-	pnpm build
-	pnpm start
+	cargo run --release
 
-# Build TypeScript
+# Build all workspace crates
 build:
-	pnpm build
+	cargo build --workspace
 
 # Check Pi status
 status:
@@ -80,33 +81,24 @@ status:
 
 # Run tests
 test:
-	pnpm test
+	cargo test --workspace
 
-# Run tests in watch mode
-test-watch:
-	pnpm test:watch
-
-# Run tests with coverage
-test-coverage:
-	pnpm test:coverage
-
-# Run ESLint
-lint:
-	pnpm lint
-
-# Run TypeScript type checking
-typecheck:
-	pnpm typecheck
+# Run clippy lints
+clippy:
+	cargo clippy --workspace
 
 # Run all checks
-check: lint typecheck test
+check: clippy test
 
 # Clean build artifacts
 clean:
-	@command -v rip > /dev/null 2>&1 && rip dist node_modules/.cache 2>/dev/null || rm -rf dist node_modules/.cache
+	cargo clean
 
 # Install systemd service (Linux)
 install-service:
+	@echo "Building release binary..."
+	cargo build --release
+	@echo ""
 	@echo "Creating systemd user service..."
 	@mkdir -p ~/.config/systemd/user
 	@echo "[Unit]" > ~/.config/systemd/user/mini-claw.service
@@ -116,7 +108,7 @@ install-service:
 	@echo "[Service]" >> ~/.config/systemd/user/mini-claw.service
 	@echo "Type=simple" >> ~/.config/systemd/user/mini-claw.service
 	@echo "WorkingDirectory=$$(pwd)" >> ~/.config/systemd/user/mini-claw.service
-	@echo "ExecStart=$$(which node) $$(pwd)/dist/index.js" >> ~/.config/systemd/user/mini-claw.service
+	@echo "ExecStart=$$(pwd)/target/release/mini-claw" >> ~/.config/systemd/user/mini-claw.service
 	@echo "Restart=on-failure" >> ~/.config/systemd/user/mini-claw.service
 	@echo "RestartSec=5" >> ~/.config/systemd/user/mini-claw.service
 	@echo "" >> ~/.config/systemd/user/mini-claw.service
@@ -129,19 +121,20 @@ install-service:
 	@echo "  systemctl --user enable mini-claw"
 
 # Playwright skill targets
+pw-build:
+	@echo "Building pw CLI..."
+	cargo build -p pw
+
 pw-install:
-	@echo "Installing Playwright skill..."
-	cd skills/playwright && pnpm install
-	@echo ""
-	@echo "Linking pw command globally..."
-	cd skills/playwright && pnpm link --global
+	@echo "Building and installing pw CLI..."
+	cargo install --path skills/playwright
 	@echo ""
 	@echo "Done! Test with: pw --help"
 
-pw-dev:
-	@echo "Starting Playwright skill in dev mode..."
-	cd skills/playwright && pnpm dev
+# Deploy: build from source and install as service
+deploy:
+	./install.sh --from-source
 
-pw-build:
-	@echo "Building Playwright skill..."
-	cd skills/playwright && pnpm build
+# Uninstall service
+uninstall:
+	./install.sh --uninstall
