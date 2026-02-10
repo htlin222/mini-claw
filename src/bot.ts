@@ -1,10 +1,14 @@
 import { spawn } from "node:child_process";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Bot, InlineKeyboard, InputFile } from "grammy";
 import type { Config } from "./config.js";
 import { detectFiles, snapshotWorkspace } from "./file-detector.js";
 import { markdownToHtml, stripMarkdown } from "./markdown.js";
 import {
 	type ActivityUpdate,
+	type RunPiOptions,
 	type ExtractedImage,
 	acquireLock,
 	checkPiAuth,
@@ -537,6 +541,165 @@ Send any message to chat with AI.`,
 			}
 			const errorMsg = err instanceof Error ? err.message : "Unknown error";
 			await ctx.reply(`Failed to process: ${errorMsg}`);
+		}
+	});
+
+	// Photo message handler
+	bot.on("message:photo", async (ctx) => {
+		const chatId = ctx.chat.id;
+		const userId = ctx.from?.id;
+
+		// Check allowed users
+		if (
+			config.allowedUsers.length > 0 &&
+			(!userId || !config.allowedUsers.includes(userId))
+		) {
+			await ctx.reply("Sorry, you are not authorized to use this bot.");
+			return;
+		}
+
+		// Rate limiting
+		const rateLimit = checkRateLimit(chatId, config.rateLimitCooldownMs);
+		if (!rateLimit.allowed) {
+			await ctx.reply(
+				`Please wait ${Math.ceil((rateLimit.retryAfterMs || 0) / 1000)}s before sending another message.`,
+			);
+			return;
+		}
+
+		// Get caption or use default prompt
+		const caption = ctx.message.caption || "What's in this image?";
+
+		// Get the largest photo (last in array)
+		const photos = ctx.message.photo;
+		const largestPhoto = photos[photos.length - 1];
+
+		// Download the photo
+		let tempImagePath: string | null = null;
+		try {
+			const file = await ctx.api.getFile(largestPhoto.file_id);
+			if (!file.file_path) {
+				await ctx.reply("Failed to get image file path.");
+				return;
+			}
+
+			// Download file content
+			const fileUrl = `https://api.telegram.org/file/bot${config.telegramToken}/${file.file_path}`;
+			const response = await fetch(fileUrl);
+			if (!response.ok) {
+				await ctx.reply("Failed to download image.");
+				return;
+			}
+			const imageBuffer = Buffer.from(await response.arrayBuffer());
+
+			// Save to temp file
+			const tempDir = join(tmpdir(), "mini-claw");
+			await mkdir(tempDir, { recursive: true });
+			const ext = file.file_path.split(".").pop() || "jpg";
+			tempImagePath = join(tempDir, `${chatId}-${Date.now()}.${ext}`);
+			await writeFile(tempImagePath, imageBuffer);
+
+			// Send status message
+			const statusMsg = await ctx.reply("🔄 Analyzing image...");
+
+			// Get workspace
+			const workspace = (await getWorkspace(chatId)) || config.workspace;
+
+			// Snapshot workspace for file detection
+			const beforeSnapshot = await snapshotWorkspace(workspace);
+
+			// Activity update callback
+			const onActivity = (activity: ActivityUpdate) => {
+				const icons: Record<ActivityUpdate["type"], string> = {
+					thinking: "🤔",
+					reading: "📖",
+					writing: "✍️",
+					running: "⚙️",
+					searching: "🔍",
+					working: "🔄",
+				};
+				const icon = icons[activity.type] || "🔄";
+				const detail = activity.detail ? ` ${activity.detail}` : "";
+				const elapsed = activity.elapsed > 0 ? ` (${activity.elapsed}s)` : "";
+
+				ctx.api
+					.editMessageText(
+						chatId,
+						statusMsg.message_id,
+						`${icon}${detail}${elapsed}`,
+					)
+					.catch(() => {});
+			};
+
+			// Run Pi with image
+			const result = await runPiWithStreaming(
+				config,
+				chatId,
+				caption,
+				workspace,
+				onActivity,
+				{ imagePaths: [tempImagePath] },
+			);
+
+			// Delete status message
+			try {
+				await ctx.api.deleteMessage(chatId, statusMsg.message_id);
+			} catch {
+				// Ignore
+			}
+
+			// Send error if any
+			if (result.error) {
+				await ctx.reply(`Error: ${result.error}`);
+			}
+
+			// Send output
+			if (result.output) {
+				const chunks = splitMessage(result.output.trim());
+				for (const chunk of chunks) {
+					try {
+						const html = markdownToHtml(chunk);
+						await ctx.reply(html, { parse_mode: "HTML" });
+					} catch {
+						await ctx.reply(stripMarkdown(chunk));
+					}
+				}
+			}
+
+			// Detect and send any files created by Pi
+			const detectedFiles = await detectFiles(
+				result.output || "",
+				workspace,
+				beforeSnapshot,
+			);
+
+			for (const file of detectedFiles) {
+				try {
+					if (file.type === "photo") {
+						await ctx.replyWithPhoto(new InputFile(file.path), {
+							caption: file.filename,
+						});
+					} else {
+						await ctx.replyWithDocument(new InputFile(file.path), {
+							caption: file.filename,
+						});
+					}
+				} catch {
+					await ctx.reply(`(Could not send file: ${file.filename})`);
+				}
+			}
+		} catch (err) {
+			const errorMsg = err instanceof Error ? err.message : "Unknown error";
+			await ctx.reply(`Failed to process image: ${errorMsg}`);
+		} finally {
+			// Clean up temp image
+			if (tempImagePath) {
+				try {
+					await unlink(tempImagePath);
+				} catch {
+					// Ignore cleanup errors
+				}
+			}
 		}
 	});
 

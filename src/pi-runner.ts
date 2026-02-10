@@ -149,12 +149,17 @@ export async function runPi(
 	}
 }
 
+export interface RunPiOptions {
+	imagePaths?: string[];
+}
+
 export async function runPiWithStreaming(
 	config: Config,
 	chatId: number,
 	prompt: string,
 	workspace: string,
 	onActivity: ActivityCallback,
+	options?: RunPiOptions,
 ): Promise<RunResult> {
 	const release = await acquireLock(chatId);
 	const startTime = Date.now();
@@ -170,8 +175,17 @@ export async function runPiWithStreaming(
 			"--print",
 			"--thinking",
 			config.thinkingLevel,
-			prompt,
 		];
+
+		// Add image paths with @ prefix (pi uses @path for images)
+		if (options?.imagePaths) {
+			for (const imagePath of options.imagePaths) {
+				args.push(`@${imagePath}`);
+			}
+		}
+
+		// Add the prompt last
+		args.push(prompt);
 
 		return await new Promise<RunResult>((resolve) => {
 			const proc = spawn("pi", args, {
