@@ -33,17 +33,10 @@ A minimalist alternative to [OpenClaw](https://github.com/nicepkg/openclaw) -- u
 
 ## Architecture
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Telegram   │────►│  Mini-Claw  │────►│  Pi Agent   │
-│   (User)    │◄────│   (Bot)     │◄────│  (Session)  │
-└─────────────┘     └─────────────┘     └─────────────┘
-                           │
-                           ▼
-                    ~/.mini-claw/
-                    └── sessions/
-                        └── telegram-<chat_id>.jsonl
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
+  <img alt="mini-claw architecture" src="docs/architecture.svg">
+</picture>
 
 ## Quick Start
 

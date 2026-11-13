@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1137 462" width="1137" height="462" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, 'Noto Sans TC', sans-serif" role="img" aria-label="mini-claw architecture">
+<title>mini-claw architecture</title>
+<rect width="100%" height="100%" fill="#0d1117"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#c9d1d9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect x="287" y="28" width="563" height="406" rx="18" fill="none" stroke="#c9d1d9" stroke-width="1.2" stroke-dasharray="6 6"/>
+<text x="309" y="59" font-size="19" font-weight="600" fill="#e6edf3">Your machine</text>
+<path d="M254.0,242.0 L313.0,242.0" fill="none" stroke="#c9d1d9" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+<path d="M539.0,242.0 L598.0,242.0" fill="none" stroke="#c9d1d9" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+<path d="M426.0,204.0 L426.0,152.0" fill="none" stroke="#c9d1d9" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+<path d="M711.0,204.0 L711.0,114.0 L539.0,114.0" fill="none" stroke="#c9d1d9" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+<path d="M426.0,280.0 L426.0,332.0" fill="none" stroke="#c9d1d9" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+<path d="M711.0,280.0 L711.0,332.0" fill="none" stroke="#c9d1d9" stroke-width="1.5" marker-start="url(#a)" marker-end="url(#a)"/>
+<path d="M824.0,242.0 L883.0,242.0" fill="none" stroke="#c9d1d9" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="313" y="76" width="226" height="76" rx="10" fill="#0d1117" stroke="#c9d1d9" stroke-width="1.5"/>
+<text x="426.0" y="110.0" font-size="19.0" font-weight="600" text-anchor="middle" fill="#e6edf3">Sessions</text>
+<text x="426.0" y="133.0" font-size="12.8" text-anchor="middle" fill="#8b949e">~/.mini-claw/sessions/*.jsonl</text>
+<rect x="28" y="204" width="226" height="76" rx="10" fill="#0d1117" stroke="#c9d1d9" stroke-width="1.5"/>
+<text x="141.0" y="238.0" font-size="19.0" font-weight="600" text-anchor="middle" fill="#e6edf3">You</text>
+<text x="141.0" y="261.0" font-size="14.0" text-anchor="middle" fill="#8b949e">Telegram chat</text>
+<rect x="313" y="204" width="226" height="76" rx="10" fill="#0d1117" stroke="#c9d1d9" stroke-width="1.5"/>
+<text x="426.0" y="238.0" font-size="19.0" font-weight="600" text-anchor="middle" fill="#e6edf3">Mini-Claw</text>
+<text x="426.0" y="261.0" font-size="14.0" text-anchor="middle" fill="#8b949e">Telegram bot · commands</text>
+<rect x="598" y="204" width="226" height="76" rx="10" fill="#0d1117" stroke="#c9d1d9" stroke-width="1.5"/>
+<text x="711.0" y="238.0" font-size="19.0" font-weight="600" text-anchor="middle" fill="#e6edf3">Pi agent</text>
+<text x="711.0" y="261.0" font-size="14.0" text-anchor="middle" fill="#8b949e">one session per chat</text>
+<rect x="883" y="204" width="226" height="76" rx="10" fill="#0d1117" stroke="#c9d1d9" stroke-width="1.5"/>
+<text x="996.0" y="238.0" font-size="19.0" font-weight="600" text-anchor="middle" fill="#e6edf3">Your subscription</text>
+<text x="996.0" y="261.0" font-size="12.8" text-anchor="middle" fill="#8b949e">Claude Pro/Max · ChatGPT Plus</text>
+<rect x="313" y="332" width="511" height="76" rx="10" fill="#0d1117" stroke="#c9d1d9" stroke-width="1.5"/>
+<text x="568.5" y="366.0" font-size="19.0" font-weight="600" text-anchor="middle" fill="#e6edf3">Workspace</text>
+<text x="568.5" y="389.0" font-size="14.0" text-anchor="middle" fill="#8b949e">/cd · /shell · files Pi creates</text>
+</svg>
