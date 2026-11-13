@@ -1,0 +1,5 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  ci:
+    uses: htlin222/.github/.github/workflows/node-ci.yml@main
